@@ -1,27 +1,38 @@
 import streamlit as st
 import pandas as pd
-import joblib
+import requests
 
-st.set_page_config(page_title="Freight & Invoice Intelligence System",
-                   page_icon="📦", layout="wide")
 
-freight_model = joblib.load("model/freight_cost_model.pkl")
-risk_model = joblib.load("model/invoice_risk_model.pkl")
+st.set_page_config(
+    page_title="Freight & Invoice Intelligence System",
+    page_icon="📦",
+    layout="wide"
+)
+
 
 st.title("📦 Freight & Invoice Intelligence System")
 
 st.write("Predict freight costs and identify invoice risk levels.")
 
-tab1, tab2 = st.tabs(["📦 Freight Cost Prediction",
-                      "⚠️ Invoice Risk Prediction"
-                      ])
+
+tab1, tab2 = st.tabs([
+    "📦 Freight Cost Prediction",
+    "⚠️ Invoice Risk Prediction"
+])
+
+
+# =========================================================
+# TAB 1 - FREIGHT COST PREDICTION
+# =========================================================
 
 with tab1:
+
     st.header("Freight Cost Prediction")
 
     col1, col2 = st.columns(2)
 
     with col1:
+
         origin_city = st.selectbox(
             "Origin City",
             [
@@ -67,7 +78,9 @@ with tab1:
             min_value=0.0
         )
 
+
     with col2:
+
         destination_city = st.selectbox(
             "Destination City",
             [
@@ -99,38 +112,91 @@ with tab1:
             max_value=5.0
         )
 
-    st.divider()
+
+        st.divider()
 
     if st.button(
         "Predict Freight Cost",
         key="freight_predict"
     ):
-        input_data = pd.DataFrame({
-            "Origin_City": [origin_city],
-            "Destination_City": [destination_city],
-            "Distance_KM": [distance],
-            "Transport_Mode": [transport_mode],
-            "Vehicle_Type": [vehicle_type],
-            "Weight_KG": [weight],
-            "Volume_CBM": [volume],
-            "Shipment_Type": [shipment_type],
-            "Delivery_Days": [delivery_days],
-            "Vendor_Rating": [vendor_rating],
-            "Vendor_Experience_Years": [vendor_experience]
-        })
 
-        prediction = freight_model.predict(input_data)
+        # Input Validation
 
-        st.success(
-            f"Predicted Freight Cost: ₹{prediction[0]:,.2f}"
-        )
+        if distance <= 0:
+            st.error("Distance must be greater than 0.")
+
+        elif weight <= 0:
+            st.error("Weight must be greater than 0.")
+
+        elif volume <= 0:
+            st.error("Volume must be greater than 0.")
+
+        elif delivery_days < 0:
+            st.error("Delivery Days cannot be negative.")
+
+        elif vendor_rating < 0 or vendor_rating > 5:
+            st.error("Vendor Rating must be between 0 and 5.")
+
+        elif vendor_experience < 0:
+            st.error("Vendor Experience cannot be negative.")
+
+        else:
+
+            # Create input DataFrame
+
+            input_data = pd.DataFrame({
+                "Origin_City": [origin_city],
+                "Destination_City": [destination_city],
+                "Distance_KM": [distance],
+                "Transport_Mode": [transport_mode],
+                "Vehicle_Type": [vehicle_type],
+                "Weight_KG": [weight],
+                "Volume_CBM": [volume],
+                "Shipment_Type": [shipment_type],
+                "Delivery_Days": [delivery_days],
+                "Vendor_Rating": [vendor_rating],
+                "Vendor_Experience_Years": [vendor_experience]
+            })
+
+
+            # Streamlit → FastAPI
+
+            response = requests.post(
+                "http://127.0.0.1:8000/predict/freight",
+                json=input_data.to_dict(orient="records")[0]
+            )
+
+
+            # API Response
+
+            if response.status_code == 200:
+
+                result = response.json()
+
+                st.success(
+                    f"Predicted Freight Cost: ₹{result['predicted_freight_cost']:,.2f}"
+                )
+
+            else:
+
+                st.error(
+                    "Unable to get prediction from API."
+                )
+                
+
+# =========================================================
+# TAB 2 - INVOICE RISK PREDICTION
+# =========================================================
 
 with tab2:
+
     st.header("Invoice Risk Prediction")
 
     col1, col2 = st.columns(2)
 
+
     with col1:
+
         distance = st.number_input(
             "Distance (KM)",
             min_value=0.0,
@@ -183,7 +249,9 @@ with tab2:
             key="risk_delivery"
         )
 
+
     with col2:
+
         vendor_rating = st.number_input(
             "Vendor Rating",
             min_value=0.0,
@@ -222,95 +290,157 @@ with tab2:
             key="risk_payment_delay"
         )
 
+
     st.divider()
 
-if st.button(
-    "Predict Invoice Risk",
-    key="risk_predict"
-):
 
-    # Input Validation
+    if st.button(
+        "Predict Invoice Risk",
+        key="risk_predict"
+    ):
 
-    if distance <= 0:
-        st.error("Distance must be greater than 0.")
+        # Input Validation
 
-    elif weight <= 0:
-        st.error("Weight must be greater than 0.")
+        if distance <= 0:
 
-    elif volume <= 0:
-        st.error("Volume must be greater than 0.")
+            st.error("Distance must be greater than 0.")
 
-    elif vendor_rating < 0 or vendor_rating > 5:
-        st.error("Vendor Rating must be between 0 and 5.")
 
-    elif vendor_experience < 0:
-        st.error("Vendor Experience cannot be negative.")
+        elif weight <= 0:
 
-    elif invoice_amount <= 0:
-        st.error("Invoice Amount must be greater than 0.")
+            st.error("Weight must be greater than 0.")
 
-    elif expected_invoice_amount <= 0:
-        st.error("Expected Invoice Amount must be greater than 0.")
 
-    elif payment_delay < 0:
-        st.error("Payment Delay cannot be negative.")
+        elif volume <= 0:
 
-    else:
+            st.error("Volume must be greater than 0.")
 
-        # Create input DataFrame
-        input_data = pd.DataFrame({
-            "Distance_KM": [distance],
-            "Transport_Mode": [transport_mode],
-            "Vehicle_Type": [vehicle_type],
-            "Weight_KG": [weight],
-            "Volume_CBM": [volume],
-            "Shipment_Type": [shipment_type],
-            "Delivery_Days": [delivery_days],
-            "Vendor_Rating": [vendor_rating],
-            "Vendor_Experience_Years": [vendor_experience],
-            "Invoice_Amount": [invoice_amount],
-            "Expected_Invoice_Amount": [expected_invoice_amount],
-            "Payment_Status": [payment_status],
-            "Payment_Delay_Days": [payment_delay]
-        })
 
-        # Prediction
-        prediction = risk_model.predict(input_data)
+        elif vendor_rating < 0 or vendor_rating > 5:
 
-        risk = prediction[0]
+            st.error("Vendor Rating must be between 0 and 5.")
 
-        # Risk Probability
-        risk_probabilities = risk_model.predict_proba(input_data)[0]
 
-        classes = risk_model.classes_
+        elif vendor_experience < 0:
 
-        probability_df = pd.DataFrame({
-            "Risk Level": classes,
-            "Probability": risk_probabilities
-        })
+            st.error("Vendor Experience cannot be negative.")
 
-        probability_df["Probability"] = (
-            probability_df["Probability"] * 100
-        ).round(2)
 
-        st.subheader("Risk Probability")
+        elif invoice_amount <= 0:
 
-        st.dataframe(
-            probability_df,
-            hide_index=True
-        )
+            st.error("Invoice Amount must be greater than 0.")
 
-        # Prediction Result
-        st.subheader("Prediction Result")
 
-        if risk == "High":
-            st.error("🔴 HIGH RISK")
-            st.write("Immediate review required.")
+        elif expected_invoice_amount <= 0:
 
-        elif risk == "Medium":
-            st.warning("🟡 MEDIUM RISK")
-            st.write("Manual verification recommended.")
+            st.error("Expected Invoice Amount must be greater than 0.")
+
+
+        elif payment_delay < 0:
+
+            st.error("Payment Delay cannot be negative.")
+
 
         else:
-            st.success("🟢 LOW RISK")
-            st.write("No immediate action required.")
+
+            # Create input DataFrame
+
+            input_data = pd.DataFrame({
+                "Distance_KM": [distance],
+                "Transport_Mode": [transport_mode],
+                "Vehicle_Type": [vehicle_type],
+                "Weight_KG": [weight],
+                "Volume_CBM": [volume],
+                "Shipment_Type": [shipment_type],
+                "Delivery_Days": [delivery_days],
+                "Vendor_Rating": [vendor_rating],
+                "Vendor_Experience_Years": [vendor_experience],
+                "Invoice_Amount": [invoice_amount],
+                "Expected_Invoice_Amount": [expected_invoice_amount],
+                "Payment_Status": [payment_status],
+                "Payment_Delay_Days": [payment_delay]
+            })
+
+
+            # Streamlit → FastAPI
+
+            response = requests.post(
+                "http://127.0.0.1:8000/predict/risk",
+                json=input_data.to_dict(orient="records")[0]
+            )
+
+
+            # Handle API response
+
+            if response.status_code == 200:
+
+                result = response.json()
+
+                risk = result["predicted_risk"]
+
+                risk_probabilities = result["risk_probabilities"]
+
+
+                # Risk Probability
+
+                probability_df = pd.DataFrame({
+                    "Risk Level": risk_probabilities.keys(),
+                    "Probability": risk_probabilities.values()
+                })
+
+
+                probability_df["Probability"] = (
+                    probability_df["Probability"] * 100
+                ).round(2)
+
+
+                st.subheader("Risk Probability")
+
+
+                st.dataframe(
+                    probability_df,
+                    hide_index=True
+                )
+
+
+                # Prediction Result
+
+                st.subheader("Prediction Result")
+
+
+                if risk == "High":
+
+                    st.error("🔴 HIGH RISK")
+
+                    st.write(
+                        "Immediate review required."
+                    )
+
+
+                elif risk == "Medium":
+
+                    st.warning("🟡 MEDIUM RISK")
+
+                    st.write(
+                        "Manual verification recommended."
+                    )
+
+
+                else:
+
+                    st.success("🟢 LOW RISK")
+
+                    st.write(
+                        "No immediate action required."
+                    )
+
+
+            else:
+
+                error = response.json()
+
+                st.error(
+                    "API request failed. Please check your inputs."
+                )
+
+                st.write(error)
