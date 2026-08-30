@@ -127,6 +127,42 @@ The API also returns class probabilities so that the application can show the pr
 
 ---
 
+---
+
+# 📊 Model Performance
+
+## 📦 Freight Cost Prediction
+
+The final freight cost model uses **tuned XGBoost Regressor**.
+
+| Metric | Score |
+|---|---:|
+| MAE | 2,440.56 |
+| RMSE | 4,674.26 |
+| R² Score | **0.9512** |
+
+The tuned XGBoost model achieved an **R² score of 0.9512** on the test dataset.
+
+---
+
+## ⚠️ Invoice Risk Prediction
+
+For invoice risk classification, **Logistic Regression** was selected as the final model.
+
+Although the XGBoost classifier achieved higher overall accuracy (89.3%), its recall for the High-risk class was only 5%.
+
+Therefore, Logistic Regression with `class_weight="balanced"` was selected because it achieved better High-risk recall of **51%**, which is more important for identifying invoices that may require manual review.
+
+| Metric | Score |
+|---|---:|
+| Accuracy | **78.56%** |
+| High Risk Recall | **51%** |
+| Medium Risk Recall | 35% |
+| Low Risk Recall | 88% |
+| Macro F1-Score | 0.49 |
+| Weighted F1-Score | 0.80 |
+
+
 # 🔍 Data Analysis & Preprocessing
 
 The project includes:
